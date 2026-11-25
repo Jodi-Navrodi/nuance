@@ -37,8 +37,8 @@ button:focus-visible,a:focus-visible,.focus-area:focus-visible{outline:1px solid
   .hero:has(button:hover,.desktop-nav a:hover) .crosshair{transform:translate(-50%,-50%) scale(.275);opacity:.5}
 }
 .header{position:absolute;top:40px;left:clamp(24px,4.444444vw,64px);right:clamp(24px,4.444444vw,64px);height:44px;display:flex;align-items:center;justify-content:space-between;z-index:3}
-.brand{display:block;width:218px;height:44px;flex:0 0 218px}
-.brand img{display:block}
+.brand{display:block;width:234px;height:44px;flex:0 0 234px}
+.brand img{display:block;object-fit:contain}
 .desktop-nav{display:flex;gap:24px;align-items:flex-start}
 .nav-item{height:44px;padding:12px;font-size:14px;line-height:20px;font-weight:500;white-space:nowrap;border-radius:4px;transition:opacity 180ms ease}
 @media(hover:hover){.nav-item:hover{opacity:.72}}
