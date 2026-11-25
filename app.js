@@ -6,6 +6,20 @@ const menuClose = document.querySelector('.menu-close');
 const mobileQuery = matchMedia('(max-width: 999px)');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let geometry, current, target, frame = 0, previousTime = 0, touchStart;
+let mobileFocusMoved = false;
+
+// visualViewport also follows iOS Safari's expanded/collapsed browser panels.
+// Keep pinch zoom available: a zoomed viewport must not reflow the composition.
+function syncMobileViewport() {
+  if (!mobileQuery.matches) {
+    document.documentElement.style.removeProperty('--mobile-viewport-height');
+    return;
+  }
+  const viewport = window.visualViewport;
+  if (viewport && Math.abs(viewport.scale - 1) > .01) return;
+  document.documentElement.style.setProperty('--mobile-viewport-height',
+    `${viewport?.height ?? innerHeight}px`);
+}
 
 function constrain(point) {
   return {
@@ -45,6 +59,8 @@ function moveTo(point, immediate = false) {
 function resetFocus(immediate = false) { moveTo(geometry.initial, immediate); }
 
 function resize() {
+  const previousGeometry = geometry;
+  const previousTarget = target;
   const mobile = mobileQuery.matches;
   const {width, height} = hero.getBoundingClientRect();
   const baseWidth = mobile ? 390 : 1440;
@@ -81,7 +97,9 @@ function resize() {
     '--mask-w':`${focusWidth-(mobile ? focusScale : 0)}px`,
     '--mask-h':`${focusHeight-focusScale}px`, '--hero-height':`${height}px`, '--copy-top':`${copyTop}px`
   })) hero.style.setProperty(key, value);
-  resetFocus(true);
+  if (mobile && previousGeometry?.mobile && mobileFocusMoved) {
+    moveTo(previousTarget, true);
+  } else resetFocus(true);
   if (!mobile && menu.open) closeMenu(false);
 }
 
@@ -111,16 +129,75 @@ function inPortrait(event) {
 }
 focusArea.addEventListener('pointerdown', event => {
   if (event.pointerType === 'mouse' && !geometry.mobile) return;
+  if (touchStart || event.isPrimary === false) return;
   if (!inPortrait(event)) return;
   touchStart = {id:event.pointerId,x:event.clientX,y:event.clientY};
+  if (geometry.mobile) {
+    mobileFocusMoved = true;
+    if (event.cancelable) event.preventDefault();
+    focusArea.setPointerCapture(event.pointerId);
+  }
   moveFromPointer(event);
 });
 focusArea.addEventListener('pointermove', event => {
   if (!touchStart || event.pointerId !== touchStart.id) return;
-  const dx=event.clientX-touchStart.x,dy=event.clientY-touchStart.y;
-  if (Math.abs(dx)>Math.abs(dy)*1.1 || event.pointerType === 'pen') moveFromPointer(event);
+  if (geometry.mobile) {
+    if (event.cancelable) event.preventDefault();
+    moveFromPointer(event);
+  } else {
+    const dx=event.clientX-touchStart.x,dy=event.clientY-touchStart.y;
+    if (Math.abs(dx)>Math.abs(dy)*1.1 || event.pointerType === 'pen') moveFromPointer(event);
+  }
 });
-for (const name of ['pointerup','pointercancel']) focusArea.addEventListener(name,()=>{touchStart=null;});
+function finishPointer(event) {
+  if (!touchStart || event.pointerId !== touchStart.id) return;
+  touchStart = null;
+  if (focusArea.hasPointerCapture(event.pointerId)) focusArea.releasePointerCapture(event.pointerId);
+}
+for (const name of ['pointerup','pointercancel','lostpointercapture'])
+  focusArea.addEventListener(name,finishPointer);
+
+// Older Safari without Pointer Events uses the same focus geometry and easing.
+if (!window.PointerEvent) {
+  focusArea.addEventListener('touchstart', event => {
+    if (!geometry.mobile || touchStart || event.touches.length !== 1) return;
+    const touch = event.changedTouches[0];
+    if (!inPortrait(touch)) return;
+    touchStart = {id:touch.identifier};
+    mobileFocusMoved = true;
+    if (event.cancelable) event.preventDefault();
+    moveFromPointer(touch);
+  }, {passive:false});
+  focusArea.addEventListener('touchmove', event => {
+    if (!geometry.mobile || !touchStart) return;
+    const touch = [...event.changedTouches].find(item => item.identifier === touchStart.id);
+    if (!touch) return;
+    if (event.cancelable) event.preventDefault();
+    moveFromPointer(touch);
+  }, {passive:false});
+  for (const name of ['touchend','touchcancel']) focusArea.addEventListener(name,event => {
+    if ([...event.changedTouches].some(item => item.identifier === touchStart?.id)) touchStart = null;
+  });
+}
+
+// CSS locks the page; this non-passive guard also blocks older iOS rubber-band
+// scrolling. Taps are never cancelled, so buttons and dialog controls still click.
+// Only an overflowing menu may scroll, and its boundary cannot chain to the page.
+let menuTouchY = 0;
+document.addEventListener('touchstart',event => {
+  if (geometry.mobile && event.touches.length === 1) menuTouchY = event.touches[0].clientY;
+}, {passive:true});
+document.addEventListener('touchmove',event => {
+  if (!geometry.mobile || event.touches.length !== 1) return;
+  const y = event.touches[0].clientY;
+  const delta = y-menuTouchY;
+  menuTouchY = y;
+  const insideMenu = menu.open && menu.contains(event.target);
+  const menuCanScroll = insideMenu && menu.scrollHeight > menu.clientHeight + 1;
+  const atBoundary = delta > 0 ? menu.scrollTop <= 0
+    : menu.scrollTop + menu.clientHeight >= menu.scrollHeight - 1;
+  if ((!menuCanScroll || atBoundary) && event.cancelable) event.preventDefault();
+}, {passive:false});
 focusArea.addEventListener('keydown', event => {
   const step=event.shiftKey ? 40 : 16;
   const moves={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};
@@ -157,7 +234,15 @@ document.querySelectorAll('[data-action]').forEach(button=>{
 });
 
 new ResizeObserver(resize).observe(hero);
-mobileQuery.addEventListener('change',resize);
+window.addEventListener('resize',syncMobileViewport);
+window.visualViewport?.addEventListener('resize',syncMobileViewport);
+mobileQuery.addEventListener('change',() => {
+  touchStart = null;
+  mobileFocusMoved = false;
+  syncMobileViewport();
+  resize();
+});
+syncMobileViewport();
 resize();
 document.fonts.ready.then(resize);
 
