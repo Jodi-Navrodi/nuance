@@ -8,17 +8,26 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 let geometry, current, target, frame = 0, previousTime = 0, touchStart;
 let mobileFocusMoved = false;
 
-// visualViewport also follows iOS Safari's expanded/collapsed browser panels.
-// Keep pinch zoom available: a zoomed viewport must not reflow the composition.
+// Only the container follows Safari's visible viewport. UI is never scene-scaled.
 function syncMobileViewport() {
   if (!mobileQuery.matches) {
-    document.documentElement.style.removeProperty('--mobile-viewport-height');
+    document.documentElement.style.removeProperty('--mobile-stage-height');
     return;
   }
   const viewport = window.visualViewport;
   if (viewport && Math.abs(viewport.scale - 1) > .01) return;
-  document.documentElement.style.setProperty('--mobile-viewport-height',
-    `${viewport?.height ?? innerHeight}px`);
+  const height = viewport?.height ?? innerHeight;
+  const style = getComputedStyle(document.documentElement);
+  const inset = side => parseFloat(style.getPropertyValue(`--safe-area-${side}`)) || 0;
+  const deficit = Math.max(0,844-height);
+  const headerTop = Math.max(inset('top'),40-Math.min(20,deficit*.12));
+  const copyTop = headerTop+44+Math.max(20,100-deficit*.39);
+  const bottom = Math.max(inset('bottom'),24,60-deficit*.16);
+  document.documentElement.style.setProperty('--mobile-stage-height',`${height}px`);
+  document.documentElement.style.setProperty('--mobile-header-top',`${headerTop}px`);
+  document.documentElement.style.setProperty('--mobile-copy-top',`${copyTop}px`);
+  document.documentElement.style.setProperty('--mobile-copy-gap',`${Math.max(12,16-deficit*.018)}px`);
+  document.documentElement.style.setProperty('--mobile-cta-bottom',`${bottom}px`);
 }
 
 function constrain(point) {
@@ -58,11 +67,49 @@ function moveTo(point, immediate = false) {
 
 function resetFocus(immediate = false) { moveTo(geometry.initial, immediate); }
 
+function resizeMobile() {
+  const previous = geometry;
+  const previousTarget = target;
+  const bounds = hero.getBoundingClientRect();
+  const width = bounds.width, height = bounds.height;
+  const copy = document.querySelector('.hero-copy').getBoundingClientRect();
+  const lead = document.querySelector('.lead-mobile').getBoundingClientRect();
+  const cta = document.querySelector('.consultation-button').getBoundingClientRect();
+  const textBottom = lead.bottom-bounds.top, ctaTop=cta.top-bounds.top;
+  const space = ctaTop-textBottom;
+  const anchorX = width*265/390;
+  const anchorY = textBottom+space*161/321;
+  // Figma's approved 390×844 crop is x=128,y=29 in the new 660×1022 pair.
+  // The initial frame centre is source point (393,605), fixed relative to face.
+  // Cover constraints ensure that a portrait moved down cannot expose empty space.
+  const scale = Math.max(space/321,width/660,height/1022,
+    anchorX/393,(width-anchorX)/267,anchorY/605,(height-anchorY)/417);
+  const offsetX=anchorX-393*scale, offsetY=anchorY-605*scale;
+  const focusWidth=160*scale, focusHeight=220*scale;
+  const initial={x:anchorX-focusWidth/2,y:anchorY-focusHeight/2};
+  geometry={mobile:true,width,height,scale,focusWidth,focusHeight,initial,offsetX,offsetY};
+  for(const [key,value] of Object.entries({
+    '--plane-x':`${offsetX}px`,'--plane-y':`${offsetY}px`,
+    '--plane-w':`${660*scale}px`,'--plane-h':`${1022*scale}px`,
+    '--photo-scale':scale,'--focus-scale':scale,
+    '--mask-w':`${159*scale}px`,'--mask-h':`${219*scale}px`,
+    '--hero-height':`${height}px`,'--copy-top':`${copy.top-bounds.top}px`
+  })) hero.style.setProperty(key,value);
+  if(previous?.mobile && mobileFocusMoved){
+    const sourceX=(previousTarget.x+previous.focusWidth/2-previous.offsetX)/previous.scale;
+    const sourceY=(previousTarget.y+previous.focusHeight/2-previous.offsetY)/previous.scale;
+    moveTo({x:offsetX+sourceX*scale-focusWidth/2,y:offsetY+sourceY*scale-focusHeight/2},true);
+  } else resetFocus(true);
+}
+
 function resize() {
+  if(mobileQuery.matches){resizeMobile();return;}
   const previousGeometry = geometry;
   const previousTarget = target;
   const mobile = mobileQuery.matches;
-  const {width, height} = hero.getBoundingClientRect();
+  const bounds = hero.getBoundingClientRect();
+  const width = mobile ? hero.clientWidth : bounds.width;
+  const height = mobile ? hero.clientHeight : bounds.height;
   const baseWidth = mobile ? 390 : 1440;
   const baseHeight = mobile ? 844 : 900;
   const scale = Math.max(width/baseWidth, height/baseHeight);
@@ -89,7 +136,8 @@ function resize() {
          offsetY+576*scale-focusHeight/2))}
     : {x:offsetX+(mobile ? 185 : 775)*scale,y:offsetY+(mobile ? 466 : 216)*scale};
   geometry = {mobile, width, height, scale, focusWidth, focusHeight, initial};
-  const copyTop = document.querySelector('.hero-copy').getBoundingClientRect().top - hero.getBoundingClientRect().top;
+  const sceneScale = mobile ? bounds.width/width : 1;
+  const copyTop = (document.querySelector('.hero-copy').getBoundingClientRect().top - bounds.top)/sceneScale;
   for (const [key,value] of Object.entries({
     '--plane-x':`${offsetX}px`, '--plane-y':`${offsetY}px`,
     '--plane-w':`${planeWidth}px`, '--plane-h':`${planeHeight}px`,
@@ -109,8 +157,9 @@ function moveFromPointer(event) {
   // Account for that offset so its actual centre, rather than just the frame,
   // coincides with the cursor. Direct pointer updates avoid trailing behind it.
   const crosshairOffset = geometry.mobile ? 0 : .5 * geometry.scale;
-  moveTo({x:event.clientX-rect.left-geometry.focusWidth/2-crosshairOffset,
-    y:event.clientY-rect.top-geometry.focusHeight/2}, !geometry.mobile);
+  const sceneScale = geometry.mobile ? rect.width/geometry.width : 1;
+  moveTo({x:(event.clientX-rect.left)/sceneScale-geometry.focusWidth/2-crosshairOffset,
+    y:(event.clientY-rect.top)/sceneScale-geometry.focusHeight/2}, !geometry.mobile);
 }
 
 hero.addEventListener('pointermove', event => {
@@ -125,7 +174,8 @@ function inPortrait(event) {
   const copy = document.querySelector('.hero-copy').getBoundingClientRect();
   const lead = document.querySelector('.lead-mobile').getBoundingClientRect();
   const cta = document.querySelector('.consultation-button').getBoundingClientRect();
-  return event.clientY >= Math.max(copy.top,lead.bottom)+12 && event.clientY <= cta.top-16;
+  const scale = geometry.mobile ? hero.getBoundingClientRect().width/geometry.width : 1;
+  return event.clientY >= Math.max(copy.top,lead.bottom)+12*scale && event.clientY <= cta.top-16*scale;
 }
 focusArea.addEventListener('pointerdown', event => {
   if (event.pointerType === 'mouse' && !geometry.mobile) return;
