@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#22251a">
+  <meta name="description" content="Клиника эстетической косметологии. Современная эстетическая медицина с вниманием к вашей индивидуальности.">
+  <title>Нюанс клиник — Красота в фокусе</title>
+  <link rel="preload" href="./assets/manrope-regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="./assets/manrope-medium.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <main>
+    <section class="hero" id="hero" aria-labelledby="hero-title">
+      <div class="photography" aria-hidden="true">
+        <div class="image-plane blurred-plane">
+          <picture>
+            <source media="(max-width: 999px)" srcset="./assets/mobile-blurred.png">
+            <img class="blurred-photo" src="./assets/desktop-blurred.png" alt="" fetchpriority="high" decoding="sync">
+          </picture>
+        </div>
+        <div class="sharp-layer">
+          <div class="focus-reference" aria-hidden="true">
+            <div class="image-plane">
+              <img class="blurred-photo" src="./assets/desktop-blurred.png" alt="" decoding="sync" loading="lazy">
+            </div>
+          </div>
+          <div class="image-plane">
+            <picture>
+              <source media="(max-width: 999px)" srcset="./assets/mobile-original.png">
+              <img class="original-photo" src="./assets/desktop-original.png" alt="" decoding="sync">
+            </picture>
+          </div>
+        </div>
+      </div>
+
+      <div class="focus-area" tabindex="0" role="group" aria-label="Область резкости на портрете. Перемещайте курсор или коснитесь портрета. Клавиши со стрелками перемещают фокус; Home возвращает исходное положение."></div>
+
+      <div class="focus-chrome" aria-hidden="true">
+        <img class="focus-marker focus-marker-desktop" src="./assets/focus-desktop.svg" alt="" width="242.264" height="442.533">
+        <img class="focus-marker focus-marker-mobile" src="./assets/focus-mobile.svg" alt="" width="159.425" height="219.346">
+        <span class="crosshair"></span>
+      </div>
+
+      <header class="header">
+        <a class="brand" href="./" aria-label="Нюанс клиник — главная">
+          <img src="./assets/logo.svg" width="218" height="44" alt="Нюанс клиник — клиника эстетической косметологии">
+        </a>
+        <nav class="desktop-nav" aria-label="Основная навигация">
+          <button class="nav-item" type="button" data-action="services">Услуги</button>
+          <button class="nav-item" type="button" data-action="specialists">Специалисты</button>
+          <button class="nav-item" type="button" data-action="about">О клинике</button>
+          <button class="nav-item" type="button" data-action="contacts">Контакты</button>
+        </nav>
+        <button class="secondary-button desktop-callback" type="button" data-action="callback">Заказать звонок</button>
+        <button class="menu-toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="mobile-menu">
+          <img src="./assets/menu.svg" width="24" height="24" alt="">
+        </button>
+      </header>
+
+      <div class="hero-copy">
+        <h1 class="headline" id="hero-title">
+          <span class="sr-only">Красота в фокусе</span>
+          <img class="headline-desktop" src="./assets/headline-desktop.svg" width="544.741" height="253.8" alt="" aria-hidden="true">
+          <img class="headline-mobile" src="./assets/headline-mobile.svg" width="346.227" height="163.065" alt="" aria-hidden="true">
+        </h1>
+        <p class="lead lead-desktop">Современная эстетическая медицина<br>с вниманием к вашей индивидуальности</p>
+        <p class="lead lead-mobile">Современная эстетическая медицина с&nbsp;вниманием к&nbsp;вашей индивидуальности</p>
+        <button class="primary-button consultation-button" type="button" data-action="consultation">
+          <span class="primary-label">Записаться на консультацию</span>
+          <span class="primary-icon" aria-hidden="true">
+            <img class="arrow-default" src="./assets/arrow.svg" width="24" height="24" alt="">
+            <img class="arrow-light" src="./assets/arrow-light.svg" width="24" height="24" alt="">
+          </span>
+        </button>
+      </div>
+
+      <div class="approach">
+        <div class="accent-rule" aria-hidden="true"></div>
+        <p>Мы&nbsp;объединяем врачебную экспертизу, современные технологии и&nbsp;деликатный подход, чтобы&nbsp;подчеркнуть вашу естественную красоту</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="mobile-menu" id="mobile-menu" aria-label="Навигация">
+    <div class="menu-inner">
+      <header class="header menu-header">
+        <a class="brand" href="./" aria-label="Нюанс клиник — главная">
+          <img src="./assets/logo.svg" width="218" height="44" alt="Нюанс клиник — клиника эстетической косметологии">
+        </a>
+        <button class="menu-close" type="button" aria-label="Закрыть меню">
+          <img src="./assets/close.svg" width="24" height="24" alt="">
+        </button>
+      </header>
+      <nav class="menu-nav" aria-label="Мобильная навигация">
+        <div class="mobile-nav-row"><button class="nav-item" type="button" data-action="services">Услуги</button></div>
+        <div class="mobile-nav-row"><button class="nav-item" type="button" data-action="specialists">Специалисты</button></div>
+        <div class="mobile-nav-row"><button class="nav-item" type="button" data-action="about">О клинике</button></div>
+        <div class="mobile-nav-row"><button class="nav-item" type="button" data-action="contacts">Контакты</button></div>
+      </nav>
+      <button class="secondary-button menu-callback" type="button" data-action="callback">Заказать звонок</button>
+    </div>
+  </dialog>
+</body>
+</html>
